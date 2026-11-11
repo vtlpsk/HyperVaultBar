@@ -2,12 +2,6 @@
 
 A native macOS menu bar app for monitoring your position in Hyperliquidity Provider (HLP) or any Hyperliquid vault. Built with SwiftUI, with no third-party dependencies or API key required.
 
-## Screenshots
-
-<img src="docs/screenshots/popup.png" alt="Vault popup showing balance, 24-hour change, and APR" width="260"> <img src="docs/screenshots/settings.png" alt="Settings showing a demo wallet, vault selection, refresh interval, and alerts" width="430">
-
-The wallet address shown in Settings is a placeholder.
-
 ## Features
 
 - Personal vault balance and 24-hour percentage change in the menu bar.

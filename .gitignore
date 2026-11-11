@@ -1,0 +1,16 @@
+.DS_Store
+DerivedData/
+build/
+dist/
+*.app
+*.xcresult
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.ipa
+*.dSYM
+*.dSYM.zip
+snapshots-*.json
+flows-*.json
+*.corrupt-*
