@@ -4,7 +4,13 @@ A native macOS menu bar app for monitoring your position in Hyperliquidity Provi
 
 ## Screenshots
 
-<img src="docs/screenshots/popup.png" alt="Vault popup showing balance, 24-hour change, and APR" width="260"> <img src="docs/screenshots/settings.png" alt="Settings showing a demo wallet, vault selection, refresh interval, and alerts" width="430">
+**Menu bar popup** — Click the balance in the menu bar to view your position, 24-hour change, vault balance, and APR.
+
+<img src="docs/screenshots/popup.png" alt="Menu bar popup showing vault balance and APR" width="260">
+
+**Settings** — Choose a vault and refresh interval, then configure alerts and appearance.
+
+<img src="docs/screenshots/settings.png" alt="Settings showing vault selection, refresh interval, and alerts" width="430">
 
 The screenshots use a placeholder wallet address and sample financial values.
 
