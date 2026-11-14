@@ -114,9 +114,12 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         popover.setFrame(frame, display: true)
         popover.makeKeyAndOrderFront(nil)
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-            guard let self else { return event }
+            guard let self, event.window !== self.popover else { return event }
+            if let statusWindow = self.statusItem?.button?.window, event.window === statusWindow {
+                return event
+            }
             let point = event.window?.convertPoint(toScreen: event.locationInWindow) ?? NSEvent.mouseLocation
-            if event.window !== self.popover, !self.statusButtonContains(point) {
+            if !self.statusButtonContains(point) {
                 self.closePopover()
             }
             return event
@@ -132,7 +135,11 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
 
     private func statusButtonContains(_ screenPoint: NSPoint) -> Bool {
         guard let button = statusItem?.button, let window = button.window else { return false }
-        return window.convertToScreen(button.convert(button.bounds, to: nil)).contains(screenPoint)
+        let bounds = window.convertToScreen(button.convert(button.bounds, to: nil))
+        // macOS also routes clicks on the top edge of the menu bar to the status item.
+        let top = max(bounds.maxY, window.screen?.frame.maxY ?? bounds.maxY)
+        return screenPoint.x >= bounds.minX && screenPoint.x < bounds.maxX
+            && screenPoint.y >= bounds.minY && screenPoint.y <= top
     }
 
     private func closePopover() {
