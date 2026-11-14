@@ -91,31 +91,48 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         button.setAccessibilityLabel(title.string)
     }
 
-    private func positionPopover(anchoredTo button: NSStatusBarButton) {
+    private func popoverFrame(anchoredTo button: NSStatusBarButton) -> NSRect? {
         guard let window = button.window, let screen = window.screen,
-              let view = popover.contentView else { return }
+              let view = popover.contentView else { return nil }
         view.layoutSubtreeIfNeeded()
         let size = view.fittingSize
         let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
         let visible = screen.visibleFrame
-        let x = max(visible.minX, min(anchor.midX - size.width / 2, visible.maxX - size.width))
-        let y = min(anchor.minY - 4, visible.maxY) - size.height
-        popover.setFrame(NSRect(origin: NSPoint(x: x, y: y), size: size), display: true)
+        let edgeInset = min(8, max(0, (visible.width - size.width) / 2))
+        let minX = visible.minX + edgeInset
+        let maxX = visible.maxX - edgeInset - size.width
+        let scale = screen.backingScaleFactor
+        let centeredX = ((anchor.midX - size.width / 2) * scale).rounded() / scale
+        let x = min(max(centeredX, minX), maxX)
+        let top = min(anchor.minY, visible.maxY) - 4
+        let y = (top * scale).rounded(.down) / scale - size.height
+        return NSRect(origin: NSPoint(x: x, y: y), size: size)
     }
 
     private func showPopover(anchoredTo button: NSStatusBarButton) {
-        positionPopover(anchoredTo: button)
+        guard let frame = popoverFrame(anchoredTo: button) else { return }
+        popover.setFrame(frame, display: true)
         popover.makeKeyAndOrderFront(nil)
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             guard let self else { return event }
-            if event.window !== self.popover, event.window !== self.statusItem?.button?.window {
+            let point = event.window?.convertPoint(toScreen: event.locationInWindow) ?? NSEvent.mouseLocation
+            if event.window !== self.popover, !self.statusButtonContains(point) {
                 self.closePopover()
             }
             return event
         }
         globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
-            DispatchQueue.main.async { self?.closePopover() }
+            let point = NSEvent.mouseLocation
+            DispatchQueue.main.async {
+                guard let self, !self.statusButtonContains(point) else { return }
+                self.closePopover()
+            }
         }
+    }
+
+    private func statusButtonContains(_ screenPoint: NSPoint) -> Bool {
+        guard let button = statusItem?.button, let window = button.window else { return false }
+        return window.convertToScreen(button.convert(button.bounds, to: nil)).contains(screenPoint)
     }
 
     private func closePopover() {
@@ -131,7 +148,10 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         if event?.type == .rightMouseUp ||
             (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true) {
             closePopover()
-            makeMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY), in: sender)
+            guard let window = sender.window else { return }
+            let anchor = window.convertToScreen(sender.convert(sender.bounds, to: nil))
+            let menuOrigin = NSPoint(x: anchor.minX, y: anchor.minY - 12)
+            makeMenu().popUp(positioning: nil, at: menuOrigin, in: nil)
         } else if popover.isVisible {
             closePopover()
         } else {
@@ -366,12 +386,18 @@ private final class SettingsWindowController {
             window.center()
             self.window = window
         }
-        let settings = SettingsView(model: model,
-                                    onSave: { [weak self] in self?.window?.close() },
-                                    onCancel: { [weak self] in self?.window?.close() })
-        window?.contentViewController = NSHostingController(rootView: settings)
-        window?.makeKeyAndOrderFront(nil)
+        guard let window else { return }
+        if !window.isVisible && !window.isMiniaturized {
+            let settings = SettingsView(model: model,
+                                        onSave: { [weak self] in self?.window?.close() },
+                                        onCancel: { [weak self] in self?.window?.close() })
+            window.contentViewController = NSHostingController(rootView: settings)
+        }
         NSApp.activate(ignoringOtherApps: true)
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        // An agent app can still be inactive while the activation request takes effect.
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
     }
 }
 

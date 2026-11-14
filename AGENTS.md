@@ -25,7 +25,7 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 
 ## Interface
 
-- Center the arrowless popup below the status button when opening it. Keep its position when the balance label changes width. Close it on outside left clicks without consuming the click.
+- Center the arrowless popup below the status button when opening it. Shift it inward near the screen edge to keep it visible. Keep its position when the balance label changes width. Close it on outside left clicks without consuming the click.
 
 - A fresh install has no wallet. Validate wallet and vault addresses as `0x` plus 40 hex characters. Show saved addresses as read-only until **Change wallet**. **Change** confirms the draft, **Cancel** discards it, and **Save** persists it. A launch-at-login registration failure blocks saving.
 - The menu bar shows whole dollars with cents truncated, plus a signed 24-hour percentage without arrows. Hide the percentage below 0.1% in magnitude. The popup keeps the dollar change and shows personal equity to two decimals. Hide Balance displays `eye.slash` in the menu bar with a tooltip identifying the app and hidden state.
@@ -37,7 +37,7 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 
 ## Build and verify
 
-The app bundle uses `HyperVaultBar/AppIconFallback.icns` via `CFBundleIconFile`. Regenerate it from `Assets.xcassets/AppIcon.appiconset` when the artwork changes. For variants up to 128 pixels, resize an 860×860 crop of the 1024×1024 master and fill transparent corners with dark teal to avoid a light frame in Spotlight. Keep the original framing for larger variants. Verify the bundle icon includes small and Retina sizes.
+The app bundle uses `HyperVaultBar/AppIconFallback.icns` via `CFBundleIconFile`. Regenerate all sizes from the same 860×860 crop of the 1024×1024 master in `Assets.xcassets/AppIcon.appiconset`. Fill transparent corners with dark teal so Apps and Spotlight receive artwork without transparent padding. Verify the bundle icon includes small and Retina sizes.
 
 Run logic tests on macOS:
 
