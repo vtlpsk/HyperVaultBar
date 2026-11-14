@@ -1,31 +1,116 @@
+import AppKit
+import Combine
 import SwiftUI
 
 @main
 struct HyperVaultBarApp: App {
-    @StateObject private var model = BalanceViewModel()
-    @AppStorage("hideBalance") private var hideBalance = false
+    @NSApplicationDelegateAdaptor(StatusItemController.self) private var statusItem
 
     var body: some Scene {
-        MenuBarExtra {
-            VaultPopoverView(model: model, hideBalance: $hideBalance)
-        } label: {
-            HStack(spacing: 3) {
-                Text(hideBalance ? "••••" : (model.stale ? "—" : (!model.hasPosition ? "No position" : (model.balance.map { Money.format($0, decimals: 0) } ?? "—"))))
-                if !hideBalance, !model.stale, model.hasPosition, let change = model.change, let balance = model.balance,
-                   let percent = Money.significantPercent(change, base: balance - change, signed: true) {
-                    Text(percent)
-                        .foregroundStyle(change >= 0 ? Color.green : Color.red)
-                }
-            }
-        }
-        .menuBarExtraStyle(.window)
+        Settings { EmptyView() }
     }
 }
 
+@MainActor
+private final class StatusItemController: NSObject, NSApplicationDelegate {
+    private let model = BalanceViewModel()
+    private let popover = NSPopover()
+    private var statusItem: NSStatusItem?
+    private var observation: AnyCancellable?
+    private var hideBalance: Bool {
+        get { UserDefaults.standard.bool(forKey: "hideBalance") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "hideBalance")
+            updateTitle()
+        }
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard statusItem == nil else { return }
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = item
+        item.button?.target = self
+        item.button?.action = #selector(statusItemClicked)
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentViewController = NSHostingController(rootView:
+            VaultPopoverView(model: model,
+                             dismiss: { [weak self] in self?.popover.performClose(nil) },
+                             balanceVisibilityChanged: { [weak self] in self?.updateTitle() })
+        )
+        observation = model.objectWillChange.sink { [weak self] in
+            DispatchQueue.main.async { self?.updateTitle() }
+        }
+        updateTitle()
+    }
+
+    private func updateTitle() {
+        guard let button = statusItem?.button else { return }
+        let balance = model.balance
+        let label: String
+        if hideBalance {
+            label = "••••"
+        } else if model.stale {
+            label = "—"
+        } else if !model.hasPosition {
+            label = "No position"
+        } else {
+            label = balance.map { Money.format($0, decimals: 0) } ?? "—"
+        }
+        let font = NSFont.menuBarFont(ofSize: 0)
+        let title = NSMutableAttributedString(string: label, attributes: [.font: font])
+        if !hideBalance, !model.stale, model.hasPosition, let change = model.change, let balance,
+           let percent = Money.significantPercent(change, base: balance - change, signed: true) {
+            title.append(NSAttributedString(string: " " + percent, attributes: [
+                .font: font, .foregroundColor: change >= 0 ? NSColor.systemGreen : NSColor.systemRed
+            ]))
+        }
+        button.attributedTitle = title
+        button.setAccessibilityLabel(title.string)
+    }
+
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp ||
+            (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true) {
+            popover.performClose(nil)
+            makeMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY), in: sender)
+        } else if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        }
+    }
+
+    private func makeMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(item("Refresh", action: #selector(refreshSelected)))
+        menu.addItem(item(hideBalance ? "Show Balance" : "Hide Balance", action: #selector(visibilitySelected)))
+        menu.addItem(.separator())
+        menu.addItem(item("Settings", action: #selector(settingsSelected)))
+        menu.addItem(.separator())
+        menu.addItem(item("Quit", action: #selector(quitSelected)))
+        return menu
+    }
+
+    private func item(_ title: String, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
+    @objc private func refreshSelected() { model.refresh() }
+    @objc private func visibilitySelected() { hideBalance.toggle() }
+    @objc private func settingsSelected() { SettingsWindowController.shared.show(model: model) }
+    @objc private func quitSelected() { NSApp.terminate(nil) }
+}
+
 private struct VaultPopoverView: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject var model: BalanceViewModel
-    @Binding var hideBalance: Bool
+    @AppStorage("hideBalance") private var hideBalance = false
+    let dismiss: () -> Void
+    let balanceVisibilityChanged: () -> Void
     @AppStorage("reduceTransparency") private var reduceTransparency = false
     @State private var confirmHistoryReset = false
 
@@ -78,7 +163,10 @@ private struct VaultPopoverView: View {
             HStack(spacing: 12) {
                 Button("Refresh now", systemImage: "arrow.clockwise") { model.refresh() }
                 Button(hideBalance ? "Show balance" : "Hide balance",
-                       systemImage: hideBalance ? "eye" : "eye.slash") { hideBalance.toggle() }
+                       systemImage: hideBalance ? "eye" : "eye.slash") {
+                    hideBalance.toggle()
+                    balanceVisibilityChanged()
+                }
             }
             .buttonStyle(PopoverActionStyle())
             Button("Open vault on Hyperliquid", systemImage: "arrow.up.right.square") {
@@ -89,7 +177,7 @@ private struct VaultPopoverView: View {
             .buttonStyle(PopoverActionStyle())
             Divider()
             HStack(spacing: 12) {
-                Button("Settings…") {
+                Button("Settings") {
                     dismiss()
                     // Present Settings after the menu-bar window has been dismissed.
                     DispatchQueue.main.async { SettingsWindowController.shared.show(model: model) }

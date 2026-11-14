@@ -1,6 +1,6 @@
 # HyperVaultBar
 
-SwiftUI menu bar app for macOS 26+. Uses `MenuBarExtra` with `.window` style, `LSUIElement`, and sandboxed outgoing network access. No dependencies or API key. Keep this guide current and update README when behavior changes.
+SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and anchors an `NSPopover` with SwiftUI content. Uses `LSUIElement` and sandboxed outgoing network access. No dependencies or API key. Keep this guide current and update README when behavior changes.
 
 ## Code map
 
@@ -28,7 +28,7 @@ SwiftUI menu bar app for macOS 26+. Uses `MenuBarExtra` with `.window` style, `L
 - A fresh install has no wallet. Validate wallet and vault addresses as `0x` plus 40 hex characters. Show saved addresses as read-only until **Change wallet**. **Change** confirms the draft, **Cancel** discards it, and **Save** persists it. A launch-at-login registration failure blocks saving.
 - The menu bar shows whole dollars with cents truncated, plus a signed 24-hour percentage without arrows. Hide the percentage below 0.1% in magnitude. The popup keeps the dollar change and shows personal equity to two decimals. Hide balance displays `••••` in the menu bar.
 - Keep the popup’s 24-hour row compact and explain cash-flow adjustment in its tooltip. Show the consequence of a data error, with raw messages under **Technical details**. Warn when vault details are stale. Omit the vault sample timestamp.
-- Opening **Settings…** dismisses the popup. Keep that action icon-free. Show the full **Hyperliquidity Provider (HLP)** name in the picker and allow a custom vault.
+- A left click opens the popup. A right click opens a native menu with Refresh, Hide Balance or Show Balance, Settings, and Quit. Opening **Settings** from the popup dismisses it. Keep that action icon-free. Show the full **Hyperliquidity Provider (HLP)** name in the picker and allow a custom vault.
 - Align wallet, vault, and refresh controls at the right edge of the 290-point column. Keep the scrollbar outside the cards. Use the bundled Hyperliquid logo in the popup and Settings. Reduce transparency takes effect on Save and gives the popup a solid background with subtle outlines on idle buttons. Hover and press use `#307863` with white text.
 - Group alerts under **Notifications**. Show only the toggle for disabled movement alerts and ignore hidden values during Save validation. Enabled alerts show a threshold and summary, with direction, window, cooldown, and status under **Advanced**. Show permission errors beside enabled toggles and explain a disabled Save near the button. Warn when the pending refresh interval exceeds the comparison window without blocking Save.
 - Use equal-width threshold fields with direct entry and 0.1-step controls. The `%pt` tooltip reads “Percentage point”. Keep the independence notice and version below the Save/Cancel row. Read the version from `CFBundleShortVersionString`. The Finder icon is in `Assets.xcassets/AppIcon.appiconset`.

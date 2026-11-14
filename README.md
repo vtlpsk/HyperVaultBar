@@ -28,7 +28,9 @@ Requires macOS 26 or later and Xcode with a compatible macOS SDK.
 1. Open `HyperVaultBar.xcodeproj` in Xcode.
 2. Select the **HyperVaultBar** scheme and configure your signing team and bundle identifier.
 3. Build and run. HyperVaultBar appears in the menu bar.
-4. Open **Settings…**, enter your public wallet address, select a vault, and save.
+4. Open **Settings**, enter your public wallet address, select a vault, and save.
+
+Right-click the menu bar balance for **Refresh**, **Hide Balance** or **Show Balance**, **Settings**, and **Quit**.
 
 To update a saved address, use **Change wallet**, confirm with **Change**, then save.
 
