@@ -1,6 +1,6 @@
 # HyperVaultBar
 
-SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and anchors an `NSPopover` with SwiftUI content. Uses `LSUIElement` and sandboxed outgoing network access. No dependencies or API key. Keep this guide current and update README when behavior changes.
+SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and anchors a borderless `NSPanel` with SwiftUI content. Uses `LSUIElement` and sandboxed outgoing network access. No dependencies or API key. Keep this guide current and update README when behavior changes.
 
 ## Code map
 
@@ -25,8 +25,10 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 
 ## Interface
 
+- Center the arrowless popup below the status button when opening it. Keep its position when the balance label changes width. Close it on outside left clicks without consuming the click.
+
 - A fresh install has no wallet. Validate wallet and vault addresses as `0x` plus 40 hex characters. Show saved addresses as read-only until **Change wallet**. **Change** confirms the draft, **Cancel** discards it, and **Save** persists it. A launch-at-login registration failure blocks saving.
-- The menu bar shows whole dollars with cents truncated, plus a signed 24-hour percentage without arrows. Hide the percentage below 0.1% in magnitude. The popup keeps the dollar change and shows personal equity to two decimals. Hide balance displays `••••` in the menu bar.
+- The menu bar shows whole dollars with cents truncated, plus a signed 24-hour percentage without arrows. Hide the percentage below 0.1% in magnitude. The popup keeps the dollar change and shows personal equity to two decimals. Hide Balance displays `eye.slash` in the menu bar with a tooltip identifying the app and hidden state.
 - Keep the popup’s 24-hour row compact and explain cash-flow adjustment in its tooltip. Show the consequence of a data error, with raw messages under **Technical details**. Warn when vault details are stale. Omit the vault sample timestamp.
 - A left click opens the popup. A right click opens a native menu with Refresh, Hide Balance or Show Balance, Settings, and Quit. Opening **Settings** from the popup dismisses it. Keep that action icon-free. Show the full **Hyperliquidity Provider (HLP)** name in the picker and allow a custom vault.
 - Align wallet, vault, and refresh controls at the right edge of the 290-point column. Keep the scrollbar outside the cards. Use the bundled Hyperliquid logo in the popup and Settings. Reduce transparency takes effect on Save and gives the popup a solid background with subtle outlines on idle buttons. Hover and press use `#307863` with white text.
@@ -34,6 +36,8 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 - Use equal-width threshold fields with direct entry and 0.1-step controls. The `%pt` tooltip reads “Percentage point”. Keep the independence notice and version below the Save/Cancel row. Read the version from `CFBundleShortVersionString`. The Finder icon is in `Assets.xcassets/AppIcon.appiconset`.
 
 ## Build and verify
+
+The app bundle uses `HyperVaultBar/AppIconFallback.icns` via `CFBundleIconFile`. Regenerate it from `Assets.xcassets/AppIcon.appiconset` when the artwork changes. For variants up to 128 pixels, resize an 860×860 crop of the 1024×1024 master and fill transparent corners with dark teal to avoid a light frame in Spotlight. Keep the original framing for larger variants. Verify the bundle icon includes small and Retina sizes.
 
 Run logic tests on macOS:
 

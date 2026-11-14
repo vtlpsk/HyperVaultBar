@@ -12,9 +12,17 @@ struct HyperVaultBarApp: App {
 }
 
 @MainActor
+private final class VaultPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+@MainActor
 private final class StatusItemController: NSObject, NSApplicationDelegate {
     private let model = BalanceViewModel()
-    private let popover = NSPopover()
+    private let popover = VaultPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
+                                  backing: .buffered, defer: false)
+    private var localClickMonitor: Any?
+    private var globalClickMonitor: Any?
     private var statusItem: NSStatusItem?
     private var observation: AnyCancellable?
     private var hideBalance: Bool {
@@ -32,11 +40,15 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(statusItemClicked)
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        popover.behavior = .transient
-        popover.animates = true
+        popover.isOpaque = false
+        popover.backgroundColor = .clear
+        popover.hasShadow = true
+        popover.level = .popUpMenu
+        popover.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        popover.hidesOnDeactivate = false
         popover.contentViewController = NSHostingController(rootView:
             VaultPopoverView(model: model,
-                             dismiss: { [weak self] in self?.popover.performClose(nil) },
+                             dismiss: { [weak self] in self?.closePopover() },
                              balanceVisibilityChanged: { [weak self] in self?.updateTitle() })
         )
         observation = model.objectWillChange.sink { [weak self] in
@@ -47,11 +59,20 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
 
     private func updateTitle() {
         guard let button = statusItem?.button else { return }
+        if hideBalance {
+            let image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: "Balance hidden")
+            image?.isTemplate = true
+            button.image = image
+            button.attributedTitle = NSAttributedString(string: image == nil ? "••••" : "")
+            button.toolTip = "HyperVaultBar · Balance hidden"
+            button.setAccessibilityLabel("HyperVaultBar, balance hidden")
+            return
+        }
+        button.image = nil
+        button.toolTip = nil
         let balance = model.balance
         let label: String
-        if hideBalance {
-            label = "••••"
-        } else if model.stale {
+        if model.stale {
             label = "—"
         } else if !model.hasPosition {
             label = "No position"
@@ -60,7 +81,7 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         }
         let font = NSFont.menuBarFont(ofSize: 0)
         let title = NSMutableAttributedString(string: label, attributes: [.font: font])
-        if !hideBalance, !model.stale, model.hasPosition, let change = model.change, let balance,
+        if !model.stale, model.hasPosition, let change = model.change, let balance,
            let percent = Money.significantPercent(change, base: balance - change, signed: true) {
             title.append(NSAttributedString(string: " " + percent, attributes: [
                 .font: font, .foregroundColor: change >= 0 ? NSColor.systemGreen : NSColor.systemRed
@@ -70,16 +91,51 @@ private final class StatusItemController: NSObject, NSApplicationDelegate {
         button.setAccessibilityLabel(title.string)
     }
 
+    private func positionPopover(anchoredTo button: NSStatusBarButton) {
+        guard let window = button.window, let screen = window.screen,
+              let view = popover.contentView else { return }
+        view.layoutSubtreeIfNeeded()
+        let size = view.fittingSize
+        let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
+        let visible = screen.visibleFrame
+        let x = max(visible.minX, min(anchor.midX - size.width / 2, visible.maxX - size.width))
+        let y = min(anchor.minY - 4, visible.maxY) - size.height
+        popover.setFrame(NSRect(origin: NSPoint(x: x, y: y), size: size), display: true)
+    }
+
+    private func showPopover(anchoredTo button: NSStatusBarButton) {
+        positionPopover(anchoredTo: button)
+        popover.makeKeyAndOrderFront(nil)
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            guard let self else { return event }
+            if event.window !== self.popover, event.window !== self.statusItem?.button?.window {
+                self.closePopover()
+            }
+            return event
+        }
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            DispatchQueue.main.async { self?.closePopover() }
+        }
+    }
+
+    private func closePopover() {
+        popover.orderOut(nil)
+        if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
+        if let globalClickMonitor { NSEvent.removeMonitor(globalClickMonitor) }
+        localClickMonitor = nil
+        globalClickMonitor = nil
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp ||
             (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true) {
-            popover.performClose(nil)
+            closePopover()
             makeMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY), in: sender)
-        } else if popover.isShown {
-            popover.performClose(nil)
+        } else if popover.isVisible {
+            closePopover()
         } else {
-            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+            showPopover(anchoredTo: sender)
         }
     }
 
@@ -188,7 +244,14 @@ private struct VaultPopoverView: View {
         }
         .padding(18)
         .frame(width: 360)
-        .background(reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.clear)
+        .background {
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor)
+            } else {
+                Rectangle().fill(.regularMaterial)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .confirmationDialog("Restart balance history?", isPresented: $confirmHistoryReset) {
             Button("Restart history", role: .destructive) { model.resetCorruptedHistory() }
         } message: {

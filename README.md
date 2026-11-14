@@ -32,6 +32,8 @@ Requires macOS 26 or later and Xcode with a compatible macOS SDK.
 
 Right-click the menu bar balance for **Refresh**, **Hide Balance** or **Show Balance**, **Settings**, and **Quit**.
 
+When the balance is hidden, the menu bar shows a crossed-out eye.
+
 To update a saved address, use **Change wallet**, confirm with **Change**, then save.
 
 Refresh defaults to 15 minutes, with a minimum of 15 seconds. The app refreshes immediately when the Mac wakes. Notifications require permission and are checked on each refresh. Install the signed app in `/Applications` before enabling launch at login.
