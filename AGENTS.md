@@ -37,7 +37,7 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 
 ## Build and verify
 
-The app bundle declares `Assets.xcassets/AppIcon.appiconset` as its primary icon through `ASSETCATALOG_COMPILER_APPICON_NAME`, so macOS can find it in notifications as well as Apps and Spotlight. Keep `HyperVaultBar/AppIconFallback.icns` bundled as a fallback. Regenerate all sizes from the same 860×860 crop of the 1024×1024 master in `Assets.xcassets/AppIcon.appiconset`. Fill transparent corners with dark teal so Apps and Spotlight receive artwork without transparent padding. Verify the bundle icon includes small and Retina sizes.
+Xcode builds the primary icon from `Assets.xcassets/AppIcon.appiconset`. Keep `HyperVaultBar/AppIconFallback.icns` bundled. Use the enlarged, opaque 1024×1024 artwork to regenerate standard and Retina sizes. When changing icon assets, verify Apps, Spotlight, and a fresh notification. If macOS shows an old icon, restart the Mac before changing the bundle identifier or icon format.
 
 Run logic tests on macOS:
 
