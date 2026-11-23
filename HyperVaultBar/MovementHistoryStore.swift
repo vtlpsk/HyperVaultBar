@@ -6,12 +6,18 @@ struct MovementHistoryStore {
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
-    func load(kind: String, wallet: String, vault: String) -> MovementAlertHistory {
-        guard let data = defaults.data(forKey: key(kind: kind, wallet: wallet, vault: vault)),
-              let history = try? JSONDecoder().decode(MovementAlertHistory.self, from: data) else {
-            return MovementAlertHistory()
-        }
-        return history
+    func load(kind: String, wallet: String, vault: String) throws -> MovementAlertHistory {
+        let key = key(kind: kind, wallet: wallet, vault: vault)
+        guard let stored = defaults.object(forKey: key) else { return MovementAlertHistory() }
+        guard let data = stored as? Data else { throw CocoaError(.coderReadCorrupt) }
+        return try JSONDecoder().decode(MovementAlertHistory.self, from: data)
+    }
+
+    func archiveUnreadableHistory(kind: String, wallet: String, vault: String) {
+        let key = key(kind: kind, wallet: wallet, vault: vault)
+        guard let stored = defaults.object(forKey: key) else { return }
+        defaults.set(stored, forKey: key + ".corrupt-" + UUID().uuidString)
+        defaults.removeObject(forKey: key)
     }
 
     func save(_ history: MovementAlertHistory, kind: String, wallet: String, vault: String) throws {

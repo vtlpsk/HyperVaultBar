@@ -337,7 +337,9 @@ final class BalanceViewModel: ObservableObject {
             if !hasPosition { return "Paused: no position in this vault." }
             if flowError != nil { return "Paused: cash flows unavailable." }
         } else if vaultDetailsStale || vaultAPR == nil { return "Paused: APR data unavailable." }
-        let history = movementStore.load(kind: kind, wallet: settings.walletAddress, vault: settings.vaultAddress)
+        guard let history = try? movementStore.load(kind: kind, wallet: settings.walletAddress, vault: settings.vaultAddress) else {
+            return "Paused: alert history is unreadable."
+        }
         guard let latest = history.points.last else { return "Collecting local history." }
         guard history.comparisonPoint(at: latest.date, window: config.window) != nil else {
             return "Collecting history for a \(intervalName(config.window)) comparison."
@@ -357,7 +359,14 @@ final class BalanceViewModel: ObservableObject {
         guard !movementInFlight.contains(key) else { return }
         movementInFlight.insert(key)
         defer { movementInFlight.remove(key) }
-        var history = movementStore.load(kind: kind, wallet: wallet, vault: vault)
+        var history: MovementAlertHistory
+        do {
+            history = try movementStore.load(kind: kind, wallet: wallet, vault: vault)
+        } catch {
+            movementStore.archiveUnreadableHistory(kind: kind, wallet: wallet, vault: vault)
+            notificationError = "Damaged \(kind.uppercased()) alert history was archived. Sampling resumes on the next refresh."
+            return
+        }
         if history.configuration != config {
             history.configuration = config
             history.armed = true

@@ -79,16 +79,34 @@ final class HyperVaultBarTests: XCTestCase {
         XCTAssertEqual(try SnapshotStore(wallet: walletA, directory: directory).closestTo24Hours(before: now)?.equity, Decimal(120))
     }
 
-    func testLegacySnapshotsMigrateToTheCurrentWallet() throws {
+    func testUnassignedLegacySnapshotsAreArchived() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let folder = directory.appendingPathComponent("HyperVaultBar")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let legacy = folder.appendingPathComponent("snapshots.json")
         try JSONEncoder().encode([EquitySnapshot(date: .now, equity: Decimal(42))]).write(to: legacy)
-        XCTAssertEqual(try SnapshotStore(wallet: walletA, directory: directory).snapshots.first?.equity, Decimal(42))
+        let original = try Data(contentsOf: legacy)
+        XCTAssertTrue(try SnapshotStore(wallet: walletA, directory: directory).snapshots.isEmpty)
+        let archive = try XCTUnwrap(FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil).first { $0.lastPathComponent.hasPrefix("snapshots.json.unassigned-") })
+        XCTAssertEqual(try Data(contentsOf: archive), original)
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
         XCTAssertTrue(try SnapshotStore(wallet: walletB, directory: directory).snapshots.isEmpty)
+    }
+
+    func testDamagedMovementHistoryIsPreservedBeforeRestart() throws {
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MovementHistoryStore(defaults: defaults)
+        let key = "movement.apr.\(walletA).\(vault)"
+        let damaged = Data("broken".utf8)
+        defaults.set(damaged, forKey: key)
+        XCTAssertThrowsError(try store.load(kind: "apr", wallet: walletA, vault: vault))
+        store.archiveUnreadableHistory(kind: "apr", wallet: walletA, vault: vault)
+        let archive = try XCTUnwrap(defaults.dictionaryRepresentation().keys.first { $0.hasPrefix(key + ".corrupt-") })
+        XCTAssertEqual(defaults.data(forKey: archive), damaged)
+        XCTAssertTrue(try store.load(kind: "apr", wallet: walletA, vault: vault).points.isEmpty)
     }
 
     func testCorruptedStoresPreserveFilesAndRecover() async throws {

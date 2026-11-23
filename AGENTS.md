@@ -6,6 +6,7 @@ SwiftUI menu bar app for macOS 26+. An AppKit `NSStatusItem` handles clicks and 
 
 - `BalanceService` calls Hyperliquid’s `/info` API. `BalanceViewModel` coordinates refreshes, display state, and alerts.
 - `SnapshotStore` stores equity samples, `VaultFlowStore` caches verified ledger coverage, and `MovementHistoryStore` stores alert samples and delivery state. Scope history to the wallet and vault.
+- Archive legacy snapshots without a wallet identifier. Preserve unreadable movement history before restarting sampling for that alert.
 - `FlowAdjustedMetrics` and `DrawdownAlertState` handle calculations. `SettingsStore` manages preferences and launch at login. `NotificationService` handles permission and delivery. `Money` formats values.
 
 ## Refresh and data

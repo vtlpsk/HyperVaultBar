@@ -42,6 +42,8 @@ The 24-hour comparison requires local history. Percentage changes below 0.1% in 
 
 The vault-wide balance is sampled. If a refresh fails, the popup keeps the last known balance and marks it as stale. Movement alerts require local history covering the configured comparison window.
 
+If movement alert history becomes unreadable, the app archives it locally and collects fresh samples.
+
 ## Tests
 
 ```sh

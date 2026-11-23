@@ -23,7 +23,8 @@ final class SnapshotStore {
             if FileManager.default.fileExists(atPath: previous.path) {
                 try FileManager.default.moveItem(at: previous, to: url)
             } else if FileManager.default.fileExists(atPath: legacy.path) {
-                try FileManager.default.moveItem(at: legacy, to: url)
+                // The original file has no wallet identifier.
+                try FileManager.default.moveItem(at: legacy, to: legacy.appendingPathExtension("unassigned-" + UUID().uuidString))
             }
         }
         if FileManager.default.fileExists(atPath: url.path) {
