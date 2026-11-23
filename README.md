@@ -1,4 +1,4 @@
-# <img src="Assets.xcassets/AppIcon.appiconset/AppIcon-64.png" width="32" height="32" alt=""> HyperVaultBar
+# <img src="Assets.xcassets/AppIcon.appiconset/AppIcon-64.png" width="48" height="48" alt="" align="absmiddle"> HyperVaultBar
 
 A native macOS menu bar app for monitoring your position in Hyperliquidity Provider (HLP) or another Hyperliquid vault. No API key or third-party dependencies required.
 
